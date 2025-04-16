@@ -1,5 +1,7 @@
+import Data.Maybe (fromMaybe)
+
 data Formula 
-  = Val Bool 
+  = Var Char 
   | Not Formula
   | Formula :∧:  Formula 
   | Formula :∨:  Formula
@@ -7,26 +9,26 @@ data Formula
   | Formula :<->: Formula  
  deriving (Show)
 
-eval :: Formula -> Bool
-eval (Val b)        = b
-eval (Not f)        = not $ eval f
-eval (f :∧: f')     = eval f && eval f'
-eval (f :∨: f')     = eval f || eval f'
-eval (f :->: f')    = not (eval f) || eval f'
-eval (f :<->: f')   = ((not (eval f)) && (not (eval f'))) || ((eval f) && (eval f'))
+type Env = [(Char, Bool)] 
+ 
+eval :: Formula -> Env -> Bool
+eval (Var c) env      = fromMaybe False (lookup c env) 
+eval (Not f) env      = not $ eval f env
+eval (f :∧: f') env  = eval f env && eval f' env
+eval (f :∨: f') env  = eval f env || eval f' env
+eval (f :->: f') env  = not (eval f env) || eval f' env
+eval (f :<->: f') env = ((not (eval f env)) && (not (eval f' env))) || ((eval f env) && (eval f' env))
+
+tautology :: Formula -> Bool
+tautology formula = all (\env -> eval formula env) permutations
+
+permutations :: [Env] 
+permutations = map (zip ['A'..'Z']) (replicate 24 [True, False])
 
 main :: IO ()
 main = do
-  let t = Val True
-  let f = Val False
-
-  print $ eval (t :∧: f)             -- False
-  print $ eval (t :∨: f)             -- True
-  print $ eval (Not f)               -- True
-  print $ eval (t :->: f)            -- False
-  print $ eval (f :->: t)            -- True
-  print $ eval (t :<->: t)           -- True
-  print $ eval (t :<->: f)           -- False
-  print $ eval (Not (t :∨: f))       -- False
-  print $ eval ((t :∧: f) :->: f)    -- True
-  print $ eval ((t :∧: f) :<->: f)   -- True
+  let formula1 = (Var 'A' :->: Var 'B') :∨: (Var 'B' :->: Var 'A')
+  let formula2 = Var 'A' :∧: Not (Var 'A')
+  
+  print $ tautology formula1 
+  print $ tautology formula2 
